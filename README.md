@@ -5,7 +5,7 @@ Script that terminates when an event is received from [Particle.io](http://parti
 ## Example
 
 ```
-ACCESS_TOKEN="yourtoken" particle-wait -d yourdeviceid && poweroff
+ACCESS_TOKEN="YOUR_TOKEN" particle-wait YOUR_DEVICE_ID && poweroff
 ```
 
 ## Installation
