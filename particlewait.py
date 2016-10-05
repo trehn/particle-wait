@@ -27,18 +27,18 @@ argparser.add_argument(
     type=int,
 )
 argparser.add_argument(
-    "-d",
-    "--device",
-    default=None,
-    dest='device',
-    help="capture events only from this device ID",
-)
-argparser.add_argument(
     "-e",
     "--event",
     default=None,
     dest='event',
-    help="wait for an event with this prefix (defaults to any event)",
+    help="wait for an event with this name (defaults to any event)",
+    metavar="NAME",
+)
+argparser.add_argument(
+    'device',
+    help="capture events only from this device ID",
+    metavar="DEVICE_ID",
+    type=str,
 )
 triggered = Event()
 quit = Event()
@@ -72,17 +72,8 @@ def graceful_ctrlc(func):
 
 
 def connection_thread_body(device, event):
-    if device and event:
-        url = "https://api.particle.io/v1/devices/{}/events/{}".format(device, event)
-    elif device:
-        url = "https://api.particle.io/v1/devices/{}/events".format(device)
-    elif event:
-        url = "https://api.particle.io/v1/events/{}".format(event)
-    else:
-        url = "https://api.particle.io/v1/events"
-
     with closing(get(
-        url,
+        "https://api.particle.io/v1/devices/{}/events".format(device),
         headers={
             "Authorization": "Bearer {}".format(environ["ACCESS_TOKEN"]),
         },
@@ -94,7 +85,7 @@ def connection_thread_body(device, event):
                 return
             line = line.decode('utf-8')
             if line.startswith("event: "):
-                if not triggered.is_set():
+                if not triggered.is_set() and (not event or line[7:] == event):
                     triggered.set()
                 else:
                     triggered.clear()
