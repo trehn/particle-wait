@@ -36,7 +36,7 @@ argparser.add_argument(
 )
 argparser.add_argument(
     'device',
-    help="capture events only from this device ID",
+    help="capture events from this device ID",
     metavar="DEVICE_ID",
     type=str,
 )

@@ -22,7 +22,7 @@ usage: particle-wait [-h] [-c N] [-e NAME] DEVICE_ID
 waits for events from particle.io
 
 positional arguments:
-  DEVICE_ID             capture events only from this device ID
+  DEVICE_ID             capture events from this device ID
 
 optional arguments:
   -h, --help            show this help message and exit
