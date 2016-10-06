@@ -5,7 +5,7 @@ except ImportError:
 
 setup(
     name="particle-wait",
-    version="0.1.0",
+    version="0.2.0",
     description="wait for particle.io events on the command line",
     author="Torsten Rehn",
     author_email="torsten@rehn.email",
