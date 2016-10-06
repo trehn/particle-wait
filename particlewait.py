@@ -35,6 +35,22 @@ argparser.add_argument(
     metavar="NAME",
 )
 argparser.add_argument(
+    "-t",
+    "--title-wait",
+    default="WAITING FOR EVENT...",
+    dest='title_wait',
+    help="text to show while waiting for initial event",
+    metavar="TEXT",
+)
+argparser.add_argument(
+    "-T",
+    "--title-cancel",
+    default="WAITING FOR EVENT...",
+    dest='title_cancel',
+    help="text to show while waiting for canceling event",
+    metavar="TEXT",
+)
+argparser.add_argument(
     'device',
     help="capture events from this device ID",
     metavar="DEVICE_ID",
@@ -49,8 +65,8 @@ def setup(stdscr):
     curses.use_default_colors()
     curses.init_pair(1, curses.COLOR_RED, -1)
     curses.init_pair(2, curses.COLOR_RED, curses.COLOR_RED)
-    curses.init_pair(3, curses.COLOR_GREEN, -1)
-    curses.init_pair(4, -1, curses.COLOR_RED)
+    curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_GREEN)
+    curses.init_pair(4, curses.COLOR_GREEN, -1)
     try:
         curses.curs_set(False)
     except curses.error:
@@ -69,6 +85,55 @@ def graceful_ctrlc(func):
         except KeyboardInterrupt:
             exit(1)
     return wrapper
+
+
+def pad_to_size(text, x):
+    pad_left = int((float(x) - float(len(text))) / 2)
+    pad_right = x - (pad_left + len(text))
+    return " " * pad_left + text + " " * pad_right
+
+
+def draw_progress(stdscr, progress, title):
+    stdscr.erase()
+    height, width = stdscr.getmaxyx()
+    title_lines = len(title.splitlines())
+    pad_x = int(0.1 * float(width))
+    pad_y = int((float(height) - 4.0 - float(title_lines)) / 2.0)
+    for i, line in enumerate(title.splitlines()):
+        stdscr.insstr(pad_y + i, 0, pad_to_size(line, width), curses.color_pair(1))
+    bar_length = width - (2 * pad_x)
+    pad_y += title_lines
+    stdscr.insstr(pad_y + 1, 0, pad_to_size("╭" + bar_length * "─" + "╮", width))
+    stdscr.insstr(pad_y + 2, 0, pad_to_size("│" + bar_length * " " + "│", width))
+    stdscr.insstr(pad_y + 3, 0, pad_to_size("╰" + bar_length * "─" + "╯", width))
+    stdscr.addstr(
+        pad_y + 2,
+        pad_x + int(bar_length / 2.0) + int(progress * -0.5 * bar_length),
+        int(progress * bar_length) * " ",
+        curses.color_pair(2),
+    )
+    stdscr.refresh()
+
+
+def draw_wait(stdscr, position, change, title):
+    stdscr.erase()
+    height, width = stdscr.getmaxyx()
+    title_lines = len(title.splitlines())
+    pad_x = int(0.1 * float(width))
+    pad_y = int((float(height) - 4.0 - float(title_lines)) / 2.0)
+    for i, line in enumerate(title.splitlines()):
+        stdscr.insstr(pad_y + i, 0, pad_to_size(line, width), curses.color_pair(4))
+    bar_length = width - (2 * pad_x)
+    pad_y += title_lines
+    stdscr.insstr(pad_y + 1, 0, pad_to_size("╭" + bar_length * "─" + "╮", width))
+    stdscr.insstr(pad_y + 2, 0, pad_to_size("│" + bar_length * " " + "│", width))
+    stdscr.insstr(pad_y + 3, 0, pad_to_size("╰" + bar_length * "─" + "╯", width))
+    stdscr.addstr(pad_y + 2, pad_x + position, 2 * " ", curses.color_pair(3))
+    position += change
+    if position == bar_length - 2 or position == 0:
+        change = -1 * change
+    stdscr.refresh()
+    return (position, change)
 
 
 def connection_thread_body(device, event):
@@ -100,7 +165,10 @@ def wait(stdscr, args):
     )
     connection_thread.daemon = True
     connection_thread.start()
+    position = 0
+    change = +1
     while not quit.is_set():
+        position, change = draw_wait(stdscr, position, change, args.title_wait)
         if triggered.wait(0.01):
             trigger_time = datetime.utcnow()
             if not args.cancel:
@@ -113,11 +181,7 @@ def wait(stdscr, args):
                     quit.set()
                     return
                 height, width = stdscr.getmaxyx()
-                stdscr.erase()
-                for x in range(int(progress * float(width))):
-                    for y in range(height):
-                        stdscr.addstr(y, x, "X", curses.color_pair(2))
-                stdscr.refresh()
+                draw_progress(stdscr, progress, args.title_cancel)
                 sleep(0.03)
             stdscr.erase()
             stdscr.refresh()
